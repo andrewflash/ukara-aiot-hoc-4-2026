@@ -1,0 +1,30 @@
+{
+  "name": "ukara-aiot-day34",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Day 3: custom and Node-RED dashboards, SQLite, MQTT and notifications",
+  "engines": {
+    "node": ">=22.17.0"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env node_modules/node-red/red.js --userDir runtime --settings settings.js",
+    "broker": "node --env-file-if-exists=.env scripts/broker.js",
+    "simulate": "node --env-file-if-exists=.env scripts/simulate.js",
+    "test": "node --test test/*.test.js",
+    "build:flows": "node scripts/build-flows.js",
+    "dashboard:install": "node --env-file-if-exists=.env scripts/install-dashboard.js",
+    "broker:public": "node --env-file-if-exists=.env scripts/use-public-broker.js"
+  },
+  "devDependencies": {
+    "playwright-core": "1.56.1"
+  },
+  "dependencies": {
+    "@flowfuse/node-red-dashboard": "1.31.0",
+    "aedes": "0.51.3",
+    "chart.js": "4.4.8",
+    "mqtt": "5.10.4",
+    "node-red": "4.1.7",
+    "nodemailer": "7.0.10",
+    "ws": "8.18.3"
+  }
+}

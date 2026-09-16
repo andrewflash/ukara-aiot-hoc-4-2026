@@ -1,0 +1,10 @@
+.backend-panel { grid-column: 1 / -1; }
+.backend-controls { display: flex; gap: 20px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+.backend-controls .field { min-width: 180px; max-width: 280px; }
+.backend-panel .table-view { overflow-x: auto; margin: 16px 0; }
+.backend-panel td, .backend-panel th { white-space: nowrap; }
+.backend-panel h3 { font-size: 16px; margin-top: 24px; }
+#backendStatus { font-size: 13px; color: var(--text-secondary); }
+#dataSource { margin-bottom: 12px; }
+.switch input { display: block; position: absolute; width: 1px; height: 1px; opacity: 0; }
+.switch:focus-within { outline: 2px solid var(--series-1); outline-offset: 4px; }

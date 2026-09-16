@@ -1,0 +1,7 @@
+BACKEND/node_modules/
+BACKEND/.env
+BACKEND/data/
+BACKEND/runtime/
+*.log
+VIBRATION_INFERENCE_MQTT_APP/**/secrets.h
+*.bak

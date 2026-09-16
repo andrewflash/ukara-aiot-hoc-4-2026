@@ -1,0 +1,695 @@
+[
+  {
+    "id": "day34",
+    "type": "tab",
+    "label": "Day 3 | MQTT - SQLite - Automasi",
+    "disabled": false,
+    "info": "Start via npm start with supplied settings.js. Service uses Node built-in SQLite; see lib/workshop.js."
+  },
+  {
+    "id": "input",
+    "type": "mqtt in",
+    "z": "day34",
+    "name": "Hasil inferensi ESP32 / simulator",
+    "x": 180,
+    "y": 100,
+    "wires": [
+      [
+        "json"
+      ]
+    ],
+    "topic": "${MQTT_TOPIC}",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0
+  },
+  {
+    "id": "json",
+    "type": "json",
+    "z": "day34",
+    "name": "Parse JSON",
+    "x": 430,
+    "y": 100,
+    "wires": [
+      [
+        "validate"
+      ]
+    ],
+    "property": "payload",
+    "action": "obj",
+    "pretty": false
+  },
+  {
+    "id": "validate",
+    "type": "function",
+    "z": "day34",
+    "name": "Validasi kontrak",
+    "x": 640,
+    "y": 100,
+    "wires": [
+      [
+        "persist"
+      ]
+    ],
+    "func": "try { global.get('workshop').validate(msg.payload, msg.topic); return msg; } catch(e) { node.warn(e.message); return null; }",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "persist",
+    "type": "function",
+    "z": "day34",
+    "name": "SQLite + aturan per perangkat",
+    "x": 270,
+    "y": 200,
+    "wires": [
+      [
+        "event"
+      ]
+    ],
+    "func": "try { const result = global.get('workshop').ingest(msg.payload, msg.topic, Date.now(), msg.retain === true); if (!result.accepted) return null; msg.payload = result; return msg; } catch(e) { node.error(e.message, msg); return null; }",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "event",
+    "type": "function",
+    "z": "day34",
+    "name": "Hanya event alarm / recovery",
+    "x": 550,
+    "y": 200,
+    "wires": [
+      [
+        "notify"
+      ]
+    ],
+    "func": "if (!msg.payload.event) return null; msg.payload = msg.payload.event; return msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "notify",
+    "type": "function",
+    "z": "day34",
+    "name": "Telegram / Email atau DRY_RUN",
+    "x": 850,
+    "y": 200,
+    "wires": [
+      [
+        "debug"
+      ]
+    ],
+    "func": "global.get('notify')(msg.payload, global.get('workshop')).then(() => { node.send({payload: {event_id: msg.payload.id, result: 'Lihat delivery status di API events'}}); node.done(); }).catch(() => { node.error('Notification processing failed'); node.done(); }); return;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "debug",
+    "type": "debug",
+    "z": "day34",
+    "name": "Hasil automasi",
+    "x": 1110,
+    "y": 200,
+    "wires": [],
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "complete": "payload",
+    "targetType": "msg"
+  },
+  {
+    "id": "http-health",
+    "type": "http in",
+    "z": "day34",
+    "name": "GET /api/health",
+    "x": 190,
+    "y": 340,
+    "wires": [
+      [
+        "api-health"
+      ]
+    ],
+    "url": "/health",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": ""
+  },
+  {
+    "id": "api-health",
+    "type": "function",
+    "z": "day34",
+    "name": "Health / konfigurasi publik",
+    "x": 560,
+    "y": 340,
+    "wires": [
+      [
+        "response"
+      ]
+    ],
+    "func": "const svc = global.get('workshop'); msg.headers = {'Content-Type':'application/json','Cache-Control':'no-store'}; try { msg.payload = {ok:true, rule:svc.rule, mqttPrefix:svc.prefix, device:env.get('DEVICE_ID') || 'esp32-01', mqttWsUrl:env.get('MQTT_WS_URL'), notificationsEnabled:env.get('NOTIFICATIONS_ENABLED') === 'true'}; msg.statusCode = 200; } catch(e) { msg.statusCode = 400; msg.payload = {error:e.message}; } return msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "http-devices",
+    "type": "http in",
+    "z": "day34",
+    "name": "GET /api/devices",
+    "x": 190,
+    "y": 405,
+    "wires": [
+      [
+        "api-devices"
+      ]
+    ],
+    "url": "/devices",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": ""
+  },
+  {
+    "id": "api-devices",
+    "type": "function",
+    "z": "day34",
+    "name": "Baca devices",
+    "x": 560,
+    "y": 405,
+    "wires": [
+      [
+        "response"
+      ]
+    ],
+    "func": "const svc = global.get('workshop'); msg.headers = {'Content-Type':'application/json','Cache-Control':'no-store'}; try { msg.payload = svc.devices(); msg.statusCode = 200; } catch(e) { msg.statusCode = 400; msg.payload = {error:e.message}; } return msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "http-history",
+    "type": "http in",
+    "z": "day34",
+    "name": "GET /api/history",
+    "x": 190,
+    "y": 470,
+    "wires": [
+      [
+        "api-history"
+      ]
+    ],
+    "url": "/history",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": ""
+  },
+  {
+    "id": "api-history",
+    "type": "function",
+    "z": "day34",
+    "name": "Baca history",
+    "x": 560,
+    "y": 470,
+    "wires": [
+      [
+        "response"
+      ]
+    ],
+    "func": "const svc = global.get('workshop'); msg.headers = {'Content-Type':'application/json','Cache-Control':'no-store'}; try { msg.payload = svc.query('telemetry', msg.req.query.device, msg.req.query.limit || 100); msg.statusCode = 200; } catch(e) { msg.statusCode = 400; msg.payload = {error:e.message}; } return msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "http-events",
+    "type": "http in",
+    "z": "day34",
+    "name": "GET /api/events",
+    "x": 190,
+    "y": 535,
+    "wires": [
+      [
+        "api-events"
+      ]
+    ],
+    "url": "/events",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": ""
+  },
+  {
+    "id": "api-events",
+    "type": "function",
+    "z": "day34",
+    "name": "Baca events",
+    "x": 560,
+    "y": 535,
+    "wires": [
+      [
+        "response"
+      ]
+    ],
+    "func": "const svc = global.get('workshop'); msg.headers = {'Content-Type':'application/json','Cache-Control':'no-store'}; try { msg.payload = svc.query('events', msg.req.query.device, msg.req.query.limit || 100); msg.statusCode = 200; } catch(e) { msg.statusCode = 400; msg.payload = {error:e.message}; } return msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "response",
+    "type": "http response",
+    "z": "day34",
+    "name": "JSON response",
+    "x": 970,
+    "y": 430,
+    "wires": [],
+    "statusCode": "",
+    "headers": {}
+  },
+  {
+    "id": "errors",
+    "type": "catch",
+    "z": "day34",
+    "name": "Flow errors",
+    "x": 210,
+    "y": 650,
+    "wires": [
+      [
+        "error-log"
+      ]
+    ],
+    "scope": null,
+    "uncaught": false
+  },
+  {
+    "id": "error-log",
+    "type": "function",
+    "z": "day34",
+    "name": "Pesan error tanpa payload/kredensial",
+    "x": 590,
+    "y": 650,
+    "wires": [
+      [
+        "debug"
+      ]
+    ],
+    "func": "return {payload: {error: msg.error?.message || 'Flow error'}};",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": []
+  },
+  {
+    "id": "broker",
+    "type": "mqtt-broker",
+    "name": "Broker kelas (lihat .env)",
+    "broker": "${MQTT_HOST}",
+    "port": "${MQTT_PORT}",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": ""
+  },
+  {
+    "id": "nrui-tab",
+    "type": "tab",
+    "label": "Day 3 | Dashboard Node-RED",
+    "info": "Read-only SQLite snapshot every 2 seconds. DEVICE_ID from .env. See docs/NODE-RED-DASHBOARD.md."
+  },
+  {
+    "id": "nrui-base",
+    "type": "ui-base",
+    "name": "AIoT Workshop",
+    "path": "/dashboard",
+    "includeClientData": true,
+    "acceptsClientConfig": [],
+    "showPathInSidebar": false,
+    "headerContent": "page",
+    "navigationStyle": "default",
+    "titleBarStyle": "default",
+    "showReconnectNotification": true,
+    "showDisconnectNotification": true,
+    "notificationDisplayTime": 3,
+    "allowInstall": false
+  },
+  {
+    "id": "nrui-theme",
+    "type": "ui-theme",
+    "name": "AIoT Light",
+    "colors": {
+      "surface": "#ffffff",
+      "primary": "#0f766e",
+      "bgPage": "#f1f5f9",
+      "groupBg": "#ffffff",
+      "groupOutline": "#cbd5e1"
+    },
+    "sizes": {
+      "density": "default",
+      "pagePadding": "12px",
+      "groupGap": "12px",
+      "groupBorderRadius": "12px",
+      "widgetGap": "12px"
+    }
+  },
+  {
+    "id": "nrui-page",
+    "type": "ui-page",
+    "name": "AIoT | Monitoring Getaran",
+    "ui": "nrui-base",
+    "path": "/monitor",
+    "icon": "monitor-dashboard",
+    "layout": "grid",
+    "theme": "nrui-theme",
+    "order": 1,
+    "visible": true,
+    "disabled": false,
+    "breakpoints": [
+      {
+        "name": "Mobile",
+        "px": 0,
+        "cols": 3
+      },
+      {
+        "name": "Tablet",
+        "px": 576,
+        "cols": 6
+      },
+      {
+        "name": "Desktop",
+        "px": 1024,
+        "cols": 12
+      }
+    ]
+  },
+  {
+    "id": "nrui-group-0",
+    "type": "ui-group",
+    "name": "Status perangkat",
+    "page": "nrui-page",
+    "width": 6,
+    "height": 1,
+    "order": 1,
+    "showTitle": true,
+    "visible": true,
+    "disabled": false,
+    "groupType": "default"
+  },
+  {
+    "id": "nrui-group-1",
+    "type": "ui-group",
+    "name": "Tren anomali",
+    "page": "nrui-page",
+    "width": 6,
+    "height": 1,
+    "order": 2,
+    "showTitle": true,
+    "visible": true,
+    "disabled": false,
+    "groupType": "default"
+  },
+  {
+    "id": "nrui-group-2",
+    "type": "ui-group",
+    "name": "Histori inferensi",
+    "page": "nrui-page",
+    "width": 6,
+    "height": 1,
+    "order": 3,
+    "showTitle": true,
+    "visible": true,
+    "disabled": false,
+    "groupType": "default"
+  },
+  {
+    "id": "nrui-group-3",
+    "type": "ui-group",
+    "name": "Event automasi",
+    "page": "nrui-page",
+    "width": 6,
+    "height": 1,
+    "order": 4,
+    "showTitle": true,
+    "visible": true,
+    "disabled": false,
+    "groupType": "default"
+  },
+  {
+    "id": "nrui-tick",
+    "type": "inject",
+    "z": "nrui-tab",
+    "name": "Baca SQLite setiap 2 detik",
+    "x": 190,
+    "y": 100,
+    "wires": [
+      [
+        "nrui-snapshot"
+      ]
+    ],
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "2",
+    "once": true,
+    "onceDelay": 1,
+    "payload": "",
+    "payloadType": "date"
+  },
+  {
+    "id": "nrui-snapshot",
+    "type": "function",
+    "z": "nrui-tab",
+    "name": "Snapshot perangkat dari DEVICE_ID",
+    "x": 490,
+    "y": 100,
+    "wires": [
+      [
+        "nrui-status"
+      ],
+      [
+        "nrui-score"
+      ],
+      [
+        "nrui-label"
+      ],
+      [
+        "nrui-source"
+      ],
+      [
+        "nrui-chart"
+      ],
+      [
+        "nrui-history"
+      ],
+      [
+        "nrui-events"
+      ]
+    ],
+    "outputs": 7,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "func": "const svc = global.get('workshop');\nconst device = env.get('DEVICE_ID') || 'esp32-01';\nconst rows = svc.query('telemetry', device, 40);\nconst latest = rows[0];\nconst state = svc.devices().find(d => d.device === device);\nconst status = !latest ? 'BELUM ADA DATA' : state?.stale ? 'DATA TERLAMBAT — status terbaru tidak diketahui' : latest.status;\nconst events = svc.query('events', device, 20).map(e => ({Waktu:new Date(e.received_at).toLocaleString('id-ID'),Event:e.kind,Pengiriman:e.deliveries.map(d => d.channel+': '+d.status).join(', ') || 'Belum ada hasil pengiriman'}));\nreturn [\n {payload:device+' | '+status+' | Alarm: '+(state?.alarm_active ? 'AKTIF' : 'tidak aktif')},\n {payload:latest ? 'Skor '+latest.anomaly.toFixed(3)+' / Ambang '+latest.threshold : '—'},\n {payload:latest ? latest.label+' | Confidence '+(latest.confidence*100).toFixed(1)+'%' : '—'},\n {payload:latest ? (latest.simulated ? 'SIMULASI MQTT' : 'PERANGKAT / PAYLOAD NON-SIMULASI')+' | Diterima '+new Date(latest.received_at).toLocaleString('id-ID') : 'Jalankan simulator MQTT atau ESP32. Skor anomali bukan probabilitas kerusakan.'},\n {action:'replace',payload:rows.slice().reverse().flatMap(r => [{series:'Anomali',time:r.received_at,value:r.anomaly},{series:'Ambang',time:r.received_at,value:r.threshold}])},\n {payload:rows.slice(0,10).map(r => ({Waktu:new Date(r.received_at).toLocaleTimeString('id-ID'),Status:r.status,Label:r.label,Anomali:r.anomaly,Ambang:r.threshold,Confidence:(r.confidence*100).toFixed(1)+'%'}))},\n {payload:events}\n];"
+  },
+  {
+    "id": "nrui-status",
+    "type": "ui-text",
+    "z": "nrui-tab",
+    "name": "Kondisi & alarm",
+    "x": 840,
+    "y": 100,
+    "wires": [],
+    "group": "nrui-group-0",
+    "order": 1,
+    "width": 0,
+    "height": 2,
+    "label": "Kondisi & alarm",
+    "format": "{{msg.payload}}",
+    "layout": "col-center",
+    "style": false,
+    "wrapText": true,
+    "value": "payload",
+    "valueType": "msg"
+  },
+  {
+    "id": "nrui-score",
+    "type": "ui-text",
+    "z": "nrui-tab",
+    "name": "Skor terakhir",
+    "x": 840,
+    "y": 155,
+    "wires": [],
+    "group": "nrui-group-0",
+    "order": 2,
+    "width": 0,
+    "height": 2,
+    "label": "Skor terakhir",
+    "format": "{{msg.payload}}",
+    "layout": "col-center",
+    "style": false,
+    "wrapText": true,
+    "value": "payload",
+    "valueType": "msg"
+  },
+  {
+    "id": "nrui-label",
+    "type": "ui-text",
+    "z": "nrui-tab",
+    "name": "Klasifikasi terakhir",
+    "x": 840,
+    "y": 210,
+    "wires": [],
+    "group": "nrui-group-0",
+    "order": 3,
+    "width": 0,
+    "height": 2,
+    "label": "Klasifikasi terakhir",
+    "format": "{{msg.payload}}",
+    "layout": "col-center",
+    "style": false,
+    "wrapText": true,
+    "value": "payload",
+    "valueType": "msg"
+  },
+  {
+    "id": "nrui-source",
+    "type": "ui-text",
+    "z": "nrui-tab",
+    "name": "Sumber & waktu",
+    "x": 840,
+    "y": 265,
+    "wires": [],
+    "group": "nrui-group-0",
+    "order": 4,
+    "width": 0,
+    "height": 2,
+    "label": "Sumber & waktu",
+    "format": "{{msg.payload}}",
+    "layout": "col-center",
+    "style": false,
+    "wrapText": true,
+    "value": "payload",
+    "valueType": "msg"
+  },
+  {
+    "id": "nrui-chart",
+    "type": "ui-chart",
+    "z": "nrui-tab",
+    "name": "Anomali & ambang (40 inferensi)",
+    "x": 850,
+    "y": 340,
+    "wires": [
+      []
+    ],
+    "group": "nrui-group-1",
+    "order": 1,
+    "width": 0,
+    "height": 8,
+    "label": "Skor anomali — bukan probabilitas kerusakan",
+    "chartType": "line",
+    "category": "series",
+    "categoryType": "property",
+    "xAxisProperty": "time",
+    "xAxisPropertyType": "property",
+    "xAxisType": "time",
+    "xAxisFormatType": "auto",
+    "yAxisProperty": "value",
+    "yAxisPropertyType": "property",
+    "ymin": "",
+    "ymax": "",
+    "action": "replace",
+    "showLegend": true,
+    "removeOlder": 24,
+    "removeOlderUnit": "3600",
+    "removeOlderPoints": "80",
+    "colors": [
+      "#0f766e",
+      "#ea580c"
+    ],
+    "pointRadius": 2,
+    "interpolation": "linear"
+  },
+  {
+    "id": "nrui-history",
+    "type": "ui-table",
+    "z": "nrui-tab",
+    "name": "10 inferensi terakhir",
+    "x": 850,
+    "y": 430,
+    "wires": [
+      []
+    ],
+    "group": "nrui-group-2",
+    "order": 1,
+    "width": 0,
+    "height": 0,
+    "maxrows": 10,
+    "autocols": true,
+    "showSearch": false,
+    "selectionType": "none",
+    "passthru": false,
+    "action": "replace",
+    "mobileBreakpoint": "sm",
+    "mobileBreakpointType": "defaults"
+  },
+  {
+    "id": "nrui-events",
+    "type": "ui-table",
+    "z": "nrui-tab",
+    "name": "Event & hasil pengiriman",
+    "x": 850,
+    "y": 500,
+    "wires": [
+      []
+    ],
+    "group": "nrui-group-3",
+    "order": 1,
+    "width": 0,
+    "height": 0,
+    "maxrows": 10,
+    "autocols": true,
+    "showSearch": false,
+    "selectionType": "none",
+    "passthru": false,
+    "action": "replace",
+    "mobileBreakpoint": "sm",
+    "mobileBreakpointType": "defaults"
+  }
+]
