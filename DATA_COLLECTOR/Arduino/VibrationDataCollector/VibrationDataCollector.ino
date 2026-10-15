@@ -44,6 +44,8 @@ void loop() {
   mpu.getEvent(&accel, &gyro, &temp);
 
   // Kirim CSV: accX,accY,accZ (satuan m/s^2)
+  Serial.print(millis());
+  Serial.print(',');
   Serial.print(accel.acceleration.x, 4);
   Serial.print(',');
   Serial.print(accel.acceleration.y, 4);
