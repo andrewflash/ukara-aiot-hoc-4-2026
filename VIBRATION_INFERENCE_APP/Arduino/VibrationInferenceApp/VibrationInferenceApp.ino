@@ -12,7 +12,8 @@
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 // #include "DemoVibration_inferencing.h"
-#include "TestUkara3_inferencing.h"
+// #include "TestUkara3_inferencing.h"
+#include <AIoT-HOC-Indobot-Sep-2026_inferencing.h>
 
 Adafruit_MPU6050 mpu;
 

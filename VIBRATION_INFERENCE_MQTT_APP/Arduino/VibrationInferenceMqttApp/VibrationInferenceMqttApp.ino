@@ -12,7 +12,7 @@
 #include <Wire.h>
 #include "secrets.h"
 // Gunakan header yang sesuai dengan library hasil export model peserta.
-#include "DemoVibration_inferencing.h"
+#include <AIoT-HOC-Indobot-Sep-2026_inferencing.h>
 
 #if !EI_CLASSIFIER_HAS_ANOMALY
 #error "Demo ini membutuhkan model dengan anomaly detection. Export kembali model Day 2."

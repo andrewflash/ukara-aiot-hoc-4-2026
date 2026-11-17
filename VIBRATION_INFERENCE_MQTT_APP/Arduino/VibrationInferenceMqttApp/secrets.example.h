@@ -1,6 +1,6 @@
 #pragma once
-#define WIFI_SSID "GANTI_SSID"
-#define WIFI_PASSWORD "GANTI_PASSWORD"
+#define WIFI_SSID "TEST1"
+#define WIFI_PASSWORD "12345678"
 // PUBLIC demo broker, TCP unencrypted. Never send secrets or sensitive data.
 #define MQTT_HOST "broker.hivemq.com"
 #define MQTT_PORT 1883
